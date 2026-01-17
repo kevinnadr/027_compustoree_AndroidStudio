@@ -11,57 +11,65 @@ import kotlinx.coroutines.launch
 
 class ProfileViewModel : ViewModel() {
 
-    // State Mode Edit
+    // Status Mode Edit
     var isEditing by mutableStateOf(false)
     var isLoading by mutableStateOf(false)
 
-    // Data Form
+    // Data Form (Default ambil dari Sesi Login)
     var nama by mutableStateOf(UserSession.currentUser?.nama ?: "")
     var phone by mutableStateOf(UserSession.currentUser?.noHp ?: "")
     var alamat by mutableStateOf(UserSession.currentUser?.alamat ?: "")
 
-    // Pesan Toast
+    // Pesan Feedback
     var message by mutableStateOf("")
 
+    // Fungsi Simpan Perubahan ke Server
     fun saveProfile() {
-        val user = UserSession.currentUser
-        if (user == null) return
+        val user = UserSession.currentUser ?: return
 
         viewModelScope.launch {
             isLoading = true
             try {
+                // Siapkan data body untuk dikirim
                 val body = mapOf(
                     "nama" to nama,
                     "no_hp" to phone,
                     "alamat" to alamat
                 )
 
+                // Panggil API Update User
                 val response = RetrofitClient.instance.updateUser(user.id, body)
 
-                // Update Session dengan data baru dari server
+                // Jika sukses, update data sesi lokal
                 if (response.user != null) {
                     UserSession.currentUser = response.user
-                    // Reset field form
+
+                    // Update state UI dengan data baru
                     nama = response.user.nama ?: ""
                     phone = response.user.noHp ?: ""
                     alamat = response.user.alamat ?: ""
 
-                    message = "Profil Berhasil Diupdate!"
-                    isEditing = false // Kembali ke mode baca
+                    message = "Profil berhasil diperbarui!"
+                    isEditing = false // Keluar dari mode edit
+                } else {
+                    message = "Gagal: Respon server kosong"
                 }
             } catch (e: Exception) {
-                message = "Gagal: ${e.message}"
+                message = "Gagal update: ${e.message}"
+                e.printStackTrace()
             } finally {
                 isLoading = false
             }
         }
     }
 
+    // Fungsi Batal Edit (Reset ke data awal)
     fun cancelEdit() {
-        // Reset kembali ke data asli
-        nama = UserSession.currentUser?.nama ?: ""
-        phone = UserSession.currentUser?.noHp ?: ""
-        alamat = UserSession.currentUser?.alamat ?: ""
+        val user = UserSession.currentUser
+        nama = user?.nama ?: ""
+        phone = user?.noHp ?: ""
+        alamat = user?.alamat ?: ""
         isEditing = false
+        message = ""
     }
 }

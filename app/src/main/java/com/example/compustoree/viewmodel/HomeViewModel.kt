@@ -11,22 +11,23 @@ import kotlinx.coroutines.launch
 
 class HomeViewModel : ViewModel() {
 
-    // ✅ Variable penampung data produk (List)
+    // Penampung data produk
     var products: List<Produk> by mutableStateOf(emptyList())
+        private set // Setter private agar hanya bisa diubah di ViewModel
 
-    // Status Loading
+    // Status UI
     var isLoading by mutableStateOf(false)
     var errorMessage by mutableStateOf("")
 
-    // ✅ Fungsi Load Data
+    // Fungsi Load Data
     fun loadProducts() {
         viewModelScope.launch {
             isLoading = true
+            errorMessage = "" // Reset error
             try {
-                // Panggil API getProducts
                 products = RetrofitClient.instance.getProducts()
             } catch (e: Exception) {
-                errorMessage = "Gagal memuat data: ${e.message}"
+                errorMessage = "Gagal memuat: ${e.message}"
                 e.printStackTrace()
             } finally {
                 isLoading = false
@@ -34,17 +35,13 @@ class HomeViewModel : ViewModel() {
         }
     }
 
-    // ✅ FUNGSI HAPUS PRODUK (BARU)
+    // Fungsi Hapus Produk
     fun deleteProduct(id: Int) {
         viewModelScope.launch {
-            // Jangan set isLoading true agar layar tidak berkedip parah, cukup background process
             try {
-                // Panggil API Delete
                 RetrofitClient.instance.deleteProduct(id)
-
-                // Jika sukses, muat ulang daftar produk biar item yang dihapus hilang
+                // Refresh data setelah hapus
                 loadProducts()
-
             } catch (e: Exception) {
                 e.printStackTrace()
                 errorMessage = "Gagal menghapus: ${e.message}"

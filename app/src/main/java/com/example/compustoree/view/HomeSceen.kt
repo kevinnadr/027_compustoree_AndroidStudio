@@ -10,7 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.* // Pastikan import ini ada
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -28,6 +28,7 @@ import coil.request.ImageRequest
 import com.example.compustoree.model.Produk
 import com.example.compustoree.model.UserSession
 import com.example.compustoree.viewmodel.HomeViewModel
+import com.example.compustoree.util.formatRupiah // ✅ 1. IMPORT HELPER INI
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,10 +44,7 @@ fun HomeScreen(
     val isAdmin = user?.role == "admin"
     val namaUser = user?.nama ?: "Tamu"
 
-    // --- STATE UNTUK SEARCH BAR (PERBAIKAN DISINI) ---
-    var searchQuery by remember { mutableStateOf("") } // 1. Variabel penampung teks
-
-    // State untuk Dialog Hapus
+    var searchQuery by remember { mutableStateOf("") }
     var showDialog by remember { mutableStateOf(false) }
     var productToDelete by remember { mutableStateOf<Int?>(null) }
 
@@ -95,12 +93,9 @@ fun HomeScreen(
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
 
-            // --- SEARCH BAR YANG SUDAH BISA DIKETIK ---
             OutlinedTextField(
-                value = searchQuery, // 2. Hubungkan ke variabel
-                onValueChange = { newText ->
-                    searchQuery = newText // 3. Simpan ketikan user ke variabel
-                },
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
                 placeholder = { Text("Cari laptop, monitor...") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Search, null) },
@@ -120,7 +115,6 @@ fun HomeScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    // Filter produk berdasarkan apa yang diketik (Opsional, fitur tambahan)
                     val filteredProducts = viewModel.products.filter {
                         it.nama?.contains(searchQuery, ignoreCase = true) == true ||
                                 it.kategori?.contains(searchQuery, ignoreCase = true) == true
@@ -144,7 +138,6 @@ fun HomeScreen(
     }
 }
 
-// ... (Bagian ProductItem di bawah biarkan sama seperti sebelumnya) ...
 @Composable
 fun ProductItem(
     produk: Produk,
@@ -214,8 +207,10 @@ fun ProductItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
+
+                // ✅ 2. GUNAKAN formatRupiah DI SINI
                 Text(
-                    text = "Rp ${produk.harga?.toInt() ?: 0}",
+                    text = formatRupiah(produk.harga ?: 0.0),
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold
                 )

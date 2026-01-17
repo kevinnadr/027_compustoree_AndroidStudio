@@ -5,31 +5,33 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.compustoree.model.RegisterRequest // ✅ Pastikan Import ini benar
+import com.example.compustoree.model.RegisterRequest
 import com.example.compustoree.service.RetrofitClient
 import kotlinx.coroutines.launch
 
 class RegisterViewModel : ViewModel() {
+
+    // --- STATE INPUT ---
     var nama by mutableStateOf("")
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var noHp by mutableStateOf("")
 
+    // --- STATE UI ---
     var isLoading by mutableStateOf(false)
     var message by mutableStateOf("")
 
-    // Fungsi register menerima parameter onSuccess
+    // Fungsi Register
     fun register(onSuccess: () -> Unit) {
         if (nama.isEmpty() || email.isEmpty() || password.isEmpty() || noHp.isEmpty()) {
-            message = "Semua kolom harus diisi!"
+            message = "Semua kolom wajib diisi!"
             return
         }
 
         viewModelScope.launch {
             isLoading = true
             try {
-                // ✅ PERBAIKAN DI SINI:
-                // Gunakan 'RegisterRequest', JANGAN 'User'
+                // Membuat Request Object
                 val request = RegisterRequest(
                     nama = nama,
                     email = email,
@@ -37,16 +39,15 @@ class RegisterViewModel : ViewModel() {
                     noHp = noHp
                 )
 
-                // Kirim request ke API
+                // Panggil API
                 val response = RetrofitClient.instance.register(request)
 
+                // Jika sukses (tidak throw error)
                 message = response.message
-
-                // Jika sukses, panggil navigasi
                 onSuccess()
 
             } catch (e: Exception) {
-                message = "Registrasi Gagal: ${e.message}"
+                message = "Gagal mendaftar: ${e.message}"
                 e.printStackTrace()
             } finally {
                 isLoading = false

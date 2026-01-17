@@ -14,25 +14,20 @@ import kotlinx.coroutines.launch
 
 class CheckoutViewModel : ViewModel() {
 
-    // --- DATA PRODUK (Diambil dari Server) ---
+    // --- DATA PRODUK ---
     var produk: Produk? by mutableStateOf(null)
 
-    // --- INPUTAN USER (STATE) ---
+    // --- INPUT USER ---
     var jumlahBeli by mutableStateOf(1)
-
-    // Mengambil alamat default dari Profil User saat ini
     var alamat by mutableStateOf(UserSession.currentUser?.alamat ?: "")
-
-    var metodeBayar by mutableStateOf("Transfer Bank") // Default
-    var kurir by mutableStateOf("JNE") // Default
+    var metodeBayar by mutableStateOf("Transfer Bank")
+    var kurir by mutableStateOf("JNE")
 
     // --- STATUS UI ---
     var isLoading by mutableStateOf(false)
     var message by mutableStateOf("")
 
-    // --- LOGIKA HITUNG BIAYA (REALTIME) ---
-
-    // 1. Hitung Ongkir otomatis berdasarkan kurir yang dipilih
+    // --- LOGIKA BIAYA ---
     val ongkir: Double
         get() = when (kurir) {
             "JNE" -> 20000.0
@@ -41,29 +36,22 @@ class CheckoutViewModel : ViewModel() {
             else -> 0.0
         }
 
-    // 2. Hitung Subtotal (Harga Barang x Jumlah Beli)
     val subtotal: Double
         get() = (produk?.harga ?: 0.0) * jumlahBeli
 
-    // 3. Hitung Total Akhir (Ini yang dipakai untuk QR Code & Data ke Server)
     val totalBayar: Double
         get() = subtotal + ongkir
 
-    // --- FUNGSI-FUNGSI ---
-
-    // Load Data Produk berdasarkan ID
+    // --- FUNGSI ---
     fun loadProduk(id: Int) {
         viewModelScope.launch {
             isLoading = true
             try {
                 produk = RetrofitClient.instance.getProductById(id)
-
-                // Jika field alamat masih kosong, coba isi lagi dari profil user (fallback)
                 if (alamat.isEmpty()) {
                     alamat = UserSession.currentUser?.alamat ?: ""
                 }
             } catch (e: Exception) {
-                e.printStackTrace()
                 message = "Gagal memuat produk"
             } finally {
                 isLoading = false
@@ -71,34 +59,26 @@ class CheckoutViewModel : ViewModel() {
         }
     }
 
-    // Fungsi Buat Pesanan (Checkout)
     fun buatPesanan(onSuccess: () -> Unit) {
-        val currentProduk = produk
-        val userEmail = UserSession.currentUser?.email
+        val currentProduk = produk ?: return
+        val userEmail = UserSession.currentUser?.email ?: return
 
-        // Validasi
-        if (currentProduk == null || userEmail == null) {
-            message = "Terjadi kesalahan data (Sesi habis/Produk invalid)"
-            return
-        }
-        if (alamat.trim().isEmpty()) {
+        if (alamat.isBlank()) {
             message = "Alamat pengiriman wajib diisi!"
             return
         }
 
         viewModelScope.launch {
             isLoading = true
-            message = "" // Reset pesan error
             try {
-                // 1. Siapkan Data Item
+                // 1. Buat Item Pesanan
                 val item = OrderItemRequest(
                     produkId = currentProduk.id,
                     jumlah = jumlahBeli,
                     harga = currentProduk.harga ?: 0.0
                 )
 
-                // 2. Siapkan Request Lengkap
-                // Penting: Kita kirim 'totalBayar' yang sudah termasuk ongkir
+                // 2. Buat Request Pesanan
                 val request = OrderRequest(
                     userEmail = userEmail,
                     totalHarga = totalBayar,
@@ -110,12 +90,11 @@ class CheckoutViewModel : ViewModel() {
 
                 // 3. Kirim ke Server
                 RetrofitClient.instance.createOrder(request)
-
                 message = "Pesanan Berhasil Dibuat!"
-                onSuccess() // Pindah ke halaman sukses/riwayat
+                onSuccess()
             } catch (e: Exception) {
-                e.printStackTrace()
                 message = "Gagal: ${e.message}"
+                e.printStackTrace()
             } finally {
                 isLoading = false
             }

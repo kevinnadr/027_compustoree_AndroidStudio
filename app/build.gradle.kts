@@ -65,6 +65,7 @@ dependencies {
     // 4. ViewModel (Menyimpan data agar tidak hilang saat rotasi layar)
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.0")
 
+    implementation("androidx.compose.material:material-icons-extended:1.7.0")
     // --- BATAS TAMBAHAN ---
 
     testImplementation(libs.junit)

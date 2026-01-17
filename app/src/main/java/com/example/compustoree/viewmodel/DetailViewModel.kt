@@ -14,19 +14,16 @@ class DetailViewModel : ViewModel() {
     // State data produk
     var produk: Produk? by mutableStateOf(null)
 
-    // State loading
+    // State status
     var isLoading by mutableStateOf(false)
-
-    // State error message
     var errorMessage by mutableStateOf("")
 
-    // ✅ PASTE FUNGSI INI (Inilah yang dicari oleh DetailScreen)
+    // Fungsi Load Data
     fun loadProduk(id: Int) {
         viewModelScope.launch {
             isLoading = true
             errorMessage = ""
             try {
-                // Panggil API
                 produk = RetrofitClient.instance.getProductById(id)
             } catch (e: Exception) {
                 e.printStackTrace()

@@ -1,14 +1,15 @@
 package com.example.compustoree.view
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -24,11 +25,36 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.compustoree.model.UserSession
 
-// --- DATA CLASS UNTUK ITEM BOTTOM BAR ---
-sealed class BottomBarScreen(val route: String, val title: String, val icon: ImageVector) {
-    object Home : BottomBarScreen("home", "Home", Icons.Default.Home)
-    object Riwayat : BottomBarScreen("riwayat", "Riwayat", Icons.Default.DateRange)
-    object Profile : BottomBarScreen("profile", "Profil", Icons.Default.Person)
+// Warna Tema (Konsisten)
+private val BluePrimary = Color(0xFF2563EB)
+private val IconSelectedColor = Color.White
+private val IconUnselectedColor = Color.Gray
+
+// --- DATA CLASS UNTUK ITEM BOTTOM BAR (DENGAN ICON SELECTED & UNSELECTED) ---
+sealed class BottomBarScreen(
+    val route: String,
+    val title: String,
+    val selectedIcon: ImageVector,
+    val unselectedIcon: ImageVector
+) {
+    object Home : BottomBarScreen(
+        route = "home",
+        title = "Beranda",
+        selectedIcon = Icons.Filled.Home,
+        unselectedIcon = Icons.Outlined.Home
+    )
+    object Riwayat : BottomBarScreen(
+        route = "riwayat",
+        title = "Riwayat",
+        selectedIcon = Icons.Filled.ReceiptLong, // Icon Struk Belanja
+        unselectedIcon = Icons.Outlined.ReceiptLong
+    )
+    object Profile : BottomBarScreen(
+        route = "profile",
+        title = "Akun Saya",
+        selectedIcon = Icons.Filled.Person,
+        unselectedIcon = Icons.Outlined.Person
+    )
 }
 
 @Composable
@@ -38,94 +64,122 @@ fun PengelolaHalaman(
     // Daftar halaman yang WAJIB menampilkan Bottom Bar
     val screensWithBottomBar = listOf("home", "riwayat", "profile")
 
-    // Ambil rute saat ini untuk menentukan visibilitas Bottom Bar
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
 
     Scaffold(
         bottomBar = {
-            // Hanya tampilkan Bottom Bar jika rute saat ini ada di dalam list
             if (currentRoute in screensWithBottomBar) {
-                NavigationBar {
-                    val items = listOf(
-                        BottomBarScreen.Home,
-                        BottomBarScreen.Riwayat,
-                        BottomBarScreen.Profile
-                    )
-                    items.forEach { screen ->
-                        NavigationBarItem(
-                            icon = { Icon(screen.icon, contentDescription = screen.title) },
-                            label = { Text(screen.title) },
-                            selected = currentRoute == screen.route,
-                            onClick = {
-                                navController.navigate(screen.route) {
-                                    // Agar tidak menumpuk halaman saat diklik berkali-kali
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
+                // --- BOTTOM BAR MODERN ---
+                Surface(
+                    shadowElevation = 16.dp, // Shadow agar mengambang
+                    color = Color.White,
+                    shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp) // Sudut atas melengkung
+                ) {
+                    NavigationBar(
+                        containerColor = Color.White,
+                        tonalElevation = 0.dp // Kita pakai shadow Surface, jadi ini 0
+                    ) {
+                        val items = listOf(
+                            BottomBarScreen.Home,
+                            BottomBarScreen.Riwayat,
+                            BottomBarScreen.Profile
                         )
+                        items.forEach { screen ->
+                            val isSelected = currentRoute == screen.route
+
+                            NavigationBarItem(
+                                icon = {
+                                    Icon(
+                                        imageVector = if (isSelected) screen.selectedIcon else screen.unselectedIcon,
+                                        contentDescription = screen.title
+                                    )
+                                },
+                                label = {
+                                    Text(
+                                        text = screen.title,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 11.sp
+                                    )
+                                },
+                                selected = isSelected,
+                                onClick = {
+                                    navController.navigate(screen.route) {
+                                        popUpTo(navController.graph.findStartDestination().id) {
+                                            saveState = true
+                                        }
+                                        launchSingleTop = true
+                                        restoreState = true
+                                    }
+                                },
+                                // --- WARNA CUSTOM ---
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = IconSelectedColor, // Icon jadi Putih
+                                    selectedTextColor = BluePrimary,       // Teks jadi Biru
+                                    indicatorColor = BluePrimary,          // Background pill jadi Biru
+                                    unselectedIconColor = IconUnselectedColor,
+                                    unselectedTextColor = IconUnselectedColor
+                                )
+                            )
+                        }
                     }
                 }
             }
         }
     ) { innerPadding ->
 
-        // --- NAV HOST UTAMA ---
+        // --- NAV HOST (LOGIKA TETAP SAMA) ---
         NavHost(
             navController = navController,
-            startDestination = "splash", // ✅ APLIKASI DIMULAI DARI SPLASH
+            startDestination = "splash",
             modifier = Modifier.padding(innerPadding)
         ) {
 
-            // 0. SPLASH SCREEN
+            // 0. SPLASH
             composable("splash") {
-                SplashScreen(
-                    onTimeout = {
-                        // Pindah ke Home setelah selesai timer
-                        navController.navigate("home") {
-                            popUpTo("splash") { inclusive = true } // Hapus splash dari backstack
-                        }
-                    }
-                )
+                SplashScreen(onTimeout = {
+                    navController.navigate("home") { popUpTo("splash") { inclusive = true } }
+                })
             }
 
-            // 1. HOME SCREEN (Bisa diakses Guest)
+            // 1. HOME
             composable("home") {
                 HomeScreen(
                     onProdukClick = { id -> navController.navigate("detail/$id") },
-                    // Parameter navigasi manual (opsional karena sudah ada BottomBar)
                     onRiwayatClick = { navController.navigate("riwayat") },
                     onProfileClick = { navController.navigate("profile") },
-                    // Fitur Admin
                     onAddProductClick = { navController.navigate("add_product") },
                     onEditProductClick = { id -> navController.navigate("edit_product/$id") }
                 )
             }
 
-            // 2. LOGIN SCREEN
+// 2. LOGIN SCREEN
             composable("login") {
                 LoginScreen(
                     onLoginSuccess = {
-                        // Setelah login sukses, kembali ke halaman sebelumnya (biasanya Home/Detail)
                         navController.popBackStack()
                     },
-                    onRegisterClick = { navController.navigate("register") }
+                    onRegisterClick = { navController.navigate("register") },
+
+                    // ✅ UBAH BAGIAN INI: Arahkan ke "home"
+                    onBackClick = {
+                        navController.navigate("home") {
+                            // Hapus tumpukan layar agar tidak bisa back ke login lagi
+                            popUpTo("home") { inclusive = true }
+                        }
+                    }
                 )
             }
 
-            // 3. REGISTER SCREEN
+            // 3. REGISTER
             composable("register") {
                 RegisterScreen(
-                    onRegisterSuccess = { navController.popBackStack() }, // Balik ke Login
+                    onRegisterSuccess = { navController.popBackStack() },
                     onLoginClick = { navController.popBackStack() }
                 )
             }
 
-            // 4. DETAIL PRODUK
+            // 4. DETAIL
             composable(
                 route = "detail/{produkId}",
                 arguments = listOf(navArgument("produkId") { type = NavType.IntType })
@@ -135,7 +189,6 @@ fun PengelolaHalaman(
                     produkId = produkId,
                     onBackClick = { navController.popBackStack() },
                     onBuyClick = { id ->
-                        // ✅ CEK LOGIN DULU SEBELUM CHECKOUT
                         if (UserSession.currentUser != null) {
                             navController.navigate("checkout/$id")
                         } else {
@@ -146,83 +199,78 @@ fun PengelolaHalaman(
                 )
             }
 
-            // 5. CHECKOUT SCREEN
+            // 5. CHECKOUT
             composable("checkout/{produkId}") { backStackEntry ->
                 val produkId = backStackEntry.arguments?.getString("produkId")?.toIntOrNull() ?: 0
                 CheckoutScreen(
                     produkId = produkId,
                     onBackClick = { navController.popBackStack() },
                     onSuccess = {
-                        // Setelah bayar sukses, pergi ke Riwayat & hapus checkout dari stack
-                        navController.navigate("riwayat") {
-                            popUpTo("home")
-                        }
+                        navController.navigate("riwayat") { popUpTo("home") }
                     }
                 )
             }
 
-            // 6. RIWAYAT SCREEN
+            // 6. RIWAYAT
             composable("riwayat") {
-                // ✅ CEK LOGIN
                 if (UserSession.currentUser != null) {
                     RiwayatScreen()
                 } else {
-                    // Jika belum login, redirect ke Login
                     LaunchedEffect(Unit) { navController.navigate("login") }
-                    // Tampilkan loading sementara redirect
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
                     }
                 }
             }
 
-            // 7. PROFILE SCREEN
+            // 7. PROFILE
             composable("profile") {
                 if (UserSession.currentUser != null) {
-                    // Tampilkan Profil User Asli
                     ProfileScreen(
                         onLogout = {
-                            UserSession.currentUser = null
-                            // Reset ke Home setelah logout
-                            navController.navigate("home") {
-                                popUpTo(0) { inclusive = true }
-                            }
+                            UserSession.logout() // Panggil fungsi logout di object
+                            navController.navigate("home") { popUpTo(0) { inclusive = true } }
                         }
                     )
                 } else {
-                    // Tampilan Pengganti untuk Guest (Belum Login)
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(Icons.Default.Person, null, modifier = Modifier.size(80.dp), tint = Color.Gray)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Text("Anda belum login", fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                        Text("Silakan login untuk melihat profil.", color = Color.Gray)
-                        Spacer(modifier = Modifier.height(24.dp))
-                        Button(onClick = { navController.navigate("login") }) {
-                            Text("Login Sekarang")
-                        }
-                    }
+                    GuestScreen(onLoginClick = { navController.navigate("login") })
                 }
             }
 
-            // 8. ADMIN: TAMBAH PRODUK
+            // 8. ADMIN PAGES
             composable("add_product") {
                 AddProductScreen(onBackClick = { navController.popBackStack() })
             }
-
-            // 9. ADMIN: EDIT PRODUK
             composable("edit_product/{produkId}") { backStackEntry ->
                 val produkId = backStackEntry.arguments?.getString("produkId")?.toIntOrNull() ?: 0
-                EditProductScreen(
-                    produkId = produkId,
-                    onBackClick = { navController.popBackStack() }
-                )
+                EditProductScreen(produkId = produkId, onBackClick = { navController.popBackStack() })
             }
+        }
+    }
+}
+
+// --- KOMPONEN TAMBAHAN: TAMPILAN GUEST (Jika belum login) ---
+@Composable
+fun GuestScreen(onLoginClick: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.LockPerson, null, modifier = Modifier.size(100.dp), tint = Color.LightGray)
+        Spacer(modifier = Modifier.height(24.dp))
+        Text("Anda belum login", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Text("Silakan login untuk mengakses fitur ini.", color = Color.Gray)
+        Spacer(modifier = Modifier.height(32.dp))
+        Button(
+            onClick = onLoginClick,
+            colors = ButtonDefaults.buttonColors(containerColor = BluePrimary),
+            shape = RoundedCornerShape(12.dp),
+            modifier = Modifier.fillMaxWidth().height(50.dp)
+        ) {
+            Text("Login Sekarang", fontWeight = FontWeight.Bold)
         }
     }
 }
